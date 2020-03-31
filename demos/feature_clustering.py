@@ -7,7 +7,7 @@ from sklearn.datasets import make_blobs
 from sklearn.preprocessing import StandardScaler
 
 # from dnfal.engine import cluster_features
-from dnfal.clustering import cluster_features
+from dnfal.clustering import gcg_cluster
 
 
 def _run(n_samples):
@@ -29,18 +29,12 @@ def _run(n_samples):
     print('Features set:\n')
     print(features)
 
-    # clusters = cluster_features(
-    #     features,
-    #     timestamps=timestamps,
-    #     distance_thr=distance_thr,
-    #     timestamp_thr=-1,
-    #     grouped=True
-    # )
-
-    clusters = cluster_features(
+    clusters = gcg_cluster(
         features,
-        n_neighbors=3,
-        distance_thr=distance_thr
+        timestamps=timestamps,
+        distance_thr=distance_thr,
+        timestamp_thr=-1,
+        edge_thr=0.5
     )
 
     print('\nClusters:\n')

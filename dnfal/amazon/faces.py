@@ -6,7 +6,7 @@ import cv2 as cv
 
 MIN_IMAGE_WIDTH = 80
 MAX_IMAGE_FACES = 100
-MIN_FACE_WIDTH = 40
+MIN_FACE_WIDTH = 64
 MAX_FACE_WIDTH = 164
 
 
@@ -37,10 +37,10 @@ def _resize_image(image, min_width: int = None, max_width: int = None):
     height, width = image.shape[0:2]
     if max_width is not None and width > max_width:
         scale = max_width / width
-        image = cv.resize(image, (max_width, int(scale * width)))
+        image = cv.resize(image, (max_width, int(scale * height)))
     elif min_width is not None and width < min_width:
         scale = min_width / width
-        image = cv.resize(image, (min_width, int(scale * width)))
+        image = cv.resize(image, (min_width, int(scale * height)))
 
     return image
 
@@ -145,7 +145,7 @@ def analyze_faces(images: List[np.ndarray]) -> List[AwsFace]:
         #     fontFace=cv.FONT_HERSHEY_PLAIN,
         #     fontScale=1
         # )
-
+        #
         # cv.rectangle(
         #     image_mosaic,
         #     pt1=(int(mosaic_width * box_left), int(mosaic_height * box_top)),
@@ -180,8 +180,11 @@ def analyze_faces(images: List[np.ndarray]) -> List[AwsFace]:
                 # noinspection PyTypeChecker
                 faces[image_ind] = face
 
-    cv.imshow('image', image_mosaic)
-    cv.waitKey()
+            # cv.imshow('face', images[image_ind])
+            # cv.waitKey()
+
+    # cv.imshow('image', image_mosaic)
+    # cv.waitKey()
 
     # noinspection PyTypeChecker
     return faces

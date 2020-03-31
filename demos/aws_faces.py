@@ -18,7 +18,6 @@ def run(
 ):
 
     from dnfal.amazon.faces import analyze_faces, AwsFace
-    from dnfal.genderage import GenderAgePredictor
     from dnfal.detection import FaceDetector
     from dnfal.alignment import FaceMarker, FaceAligner
     from dnfal.engine import FrameAnalyzer

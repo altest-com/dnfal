@@ -23,12 +23,11 @@ def cluster_labels(labels, indexes):
 def hcg_cluster(
     features,
     timestamps=None,
-    linkage='ward',
-    distance_thr: tuple = (0.5, 0.5),
+    distance_thr: float = 0.5,
     timestamp_thr: float = 0,
     edge_thr: float = 0.7
 ):
-    dist_neigh = NearestNeighbors(radius=distance_thr[0])
+    dist_neigh = NearestNeighbors(radius=distance_thr)
     dist_neigh.fit(features)
     dist_graph = dist_neigh.radius_neighbors_graph(mode='connectivity')
 
@@ -46,12 +45,12 @@ def hcg_cluster(
     clusters = []
 
     clustering = None
-    if distance_thr[1] > 0:
+    if distance_thr > 0:
         clustering = AgglomerativeClustering(
             n_clusters=None,
-            distance_threshold=distance_thr[1],
+            distance_threshold=distance_thr,
             affinity='euclidean',
-            linkage=linkage
+            linkage='ward'
         )
 
     for component in components:
