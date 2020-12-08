@@ -1,1 +1,1 @@
-from ._encoder import PersonEncoder
+from ._encoder import BodyEncoder

@@ -8,7 +8,7 @@ from cvtlib.drawing import Drawer
 from cvtlib.image import resize
 
 from utils import list_images, DEMOS_DIR, MODELS_DIR
-from dnfal.persons import PersonDetector
+from dnfal.persons import BodyDetector
 from dnfal.loggers import logger, config_logger
 
 
@@ -16,7 +16,7 @@ def run(image_path: str, weights_path: str):
 
     config_logger(level='DEBUG', to_console=True)
 
-    person_detector = PersonDetector(
+    person_detector = BodyDetector(
         weights_path=weights_path,
         resize_height=192
     )

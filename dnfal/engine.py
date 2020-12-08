@@ -13,7 +13,8 @@ from sklearn.cluster import AgglomerativeClustering
 import torch
 from cvtlib.video import VideoCapture
 
-from .mtypes import Face, Frame, Subject
+from persons import BodyDetector, BodyEncoder
+from .mtypes import Face, Frame, Subject, Body
 from .alignment import FaceAligner, FaceMarker
 from .detection import FaceDetector
 from .encoding import FaceEncoder
@@ -152,13 +153,9 @@ class FaceMatcher:
         computed on the basis of the distance between their embeddings
         vectors.
     """
-    def __init__(
-        self,
-        similarity_thresh: float = 0.5
-    ):
+    def __init__(self, similarity_thresh: float = 0.5):
         self._matcher = cv.BFMatcher(cv.NORM_L2)
-        self._distance_thresh: float
-        self.similarity_thresh = similarity_thresh
+        self._distance_thresh = similarity_to_distance(similarity_thresh)
 
     def match(self, x_test, x_train, y_train):
         """Match two sets of face embeddings vectors
@@ -219,6 +216,200 @@ class FaceMatcher:
     @similarity_thresh.setter
     def similarity_thresh(self, value: float):
         self._distance_thresh = similarity_to_distance(value)
+
+
+class BodyMatcher:
+    """Face matcher.
+
+    Parameters
+    ----------
+    similarity_thresh : float, optional, (default=0.9)
+        Similarity threshold for body matching. Two bodies are considered to
+        belong to the same person if the similarity between them is higher
+        than `similarity_thresh`. A similarity of `1` means that the two
+        faces are exactly the same, while a similarity of `0` means that the
+        two faces are very different. Similarity between two faces if
+        computed on the basis of the distance between their embeddings
+        vectors.
+    """
+    def __init__(self, similarity_thresh: float = 0.5):
+        self.similarity_thresh = similarity_thresh
+
+    def match(
+        self,
+        x_test: np.ndarray,
+        x_train: np.ndarray,
+        y_train: np.ndarray
+    ):
+        """Match two sets of face embeddings vectors
+
+        Parameters
+        ----------
+        x_test : array-like of shape = [n_tests, n_features]
+            The test set of face embeddings vectors. Each entry represents a
+            embeddings vector of a face.
+
+        x_train : array-like of shape = [n_trains, n_features]
+            The train set of face embeddings vectors. Each entry represents a
+            embeddings vector of a face.
+
+        y_train : array-like of shape = [n_trains]
+            The train set of face labels. Each entry represents the label of
+            the corresponding entry in `x_train`.
+
+        Returns
+        -------
+        y_test : list of length = n_trains
+            The matched face labels. Each entry represents the matched label
+            of the corresponding entry in `x_test`.
+
+        similarity : list of length = n_trains
+            The similarity scores of matched face labels. Each entry
+            represents the similarity score of the the corresponding entry
+            in `x_test`.
+        """
+
+        if len(x_train) != len(y_train):
+            raise ValueError('invalid input values')
+
+        y_test = []
+        similarity = []
+        scores = np.matmul(x_test, x_train.T)
+        for score in scores:
+            sort_id = np.argsort(score)
+            score_mask = score >= self.similarity_thresh
+            y_test.append(y_train[sort_id][score_mask])
+            similarity.append(score[score_mask])
+
+        return y_test, similarity
+
+
+class BodyVision:
+    """Body Vision.
+
+    Parameters
+    ----------
+    detector : BodyDetector
+        A BodyDetector object.
+
+    encoder: BodyEncoder or None, optional, (default=None)
+        BodyEncoder object or None if no encoding is required.
+
+    max_frame_size: int, optional, (default=0)
+        If `store_frame = True` then the input image will be stored in each
+        Body object created from a detected body. If the input image is
+        stored, it will be resized so that is maximum dimension is lowest
+        than `max_frame_size`. Set it to a value lower than or equal to zero
+        to do not resize.
+
+    store_frames: bool, optional, (default=False)
+        If `store_frame = True` then the input image will be stored in each
+        Body object created from a detected body.
+
+    body_padding: float, optional, (default=0.2)
+        Padding value is a number between 0 and 1, relative to the body box
+        height.
+    """
+
+    def __init__(
+        self,
+        detector: BodyDetector,
+        encoder: [BodyEncoder, None] = None,
+        max_frame_size: int = 0,
+        store_frames: bool = False,
+        body_padding: float = 0.2
+    ):
+        self.body_detector: BodyDetector = detector
+        self.body_encoder: BodyEncoder = encoder
+        self.max_frame_size: int = max_frame_size
+        self.store_frames: bool = store_frames
+        self.body_padding: float = body_padding
+
+    def find_bodies(self, image: np.ndarray, timestamp: float = 0):
+        """Detects and encode person bodies in a image.
+
+        Parameters
+        ----------
+        image : array-like of `dtype=np.uint8`
+            Input image to be analyzed.
+
+        timestamp : float, optional, (default=0)
+            A timestamp to be stored in each of the created Body object.
+
+        Returns
+        -------
+        bodies : list of mtypes.Body objects of length=bodies
+            A list of a Body objects, each of them containing information
+            about a detected body in the input image.
+        embeddings : array_like of shape = [n_bodies, 1024]
+            Embeddings vectors of detected bodies. Each entry is the embedding
+            vector of the corresponding body in `faces`.
+        """
+
+        h, w = image.shape[0:2]
+        bodies: List[Body] = []
+        embeddings: np.ndarray = np.array([])
+
+        boxes, detect_scores = self.body_detector.detect(image)
+        n_boxes = len(boxes)
+
+        if n_boxes == 0:
+            return bodies, embeddings
+
+        body_images = [image[b[1]:b[3], b[0]:b[2]] for b in boxes]
+
+        padded_body_images = body_images
+        padded_boxes = boxes
+        if self.body_padding != 0:
+            pad = self.body_padding
+            paddings = [int(pad * (b[2] - b[0])) for b in boxes]
+            padded_boxes = [(
+                max(0, b[0] - p),
+                max(0, b[1] - p),
+                min(b[2] + p, w - 1),
+                min(b[3] + p, h - 1),
+            ) for b, p in zip(boxes, paddings)]
+            offsets = [
+                (box[0] - padded_box[0], box[1] - padded_box[1])
+                for box, padded_box in zip(boxes, padded_boxes)
+            ]
+            padded_body_images = [
+                image[b[1]:b[3], b[0]:b[2]]
+                for b in padded_boxes
+            ]
+        else:
+            offsets = [(0, 0)] * n_boxes
+
+        padded_boxes = [
+            (b[0] / w, b[1] / h, b[2] / w, b[3] / h)
+            for b in padded_boxes
+        ]
+
+        frame = None
+        if self.store_frames:
+            frame_image = image
+            if max(image.shape[0:2]) > self.max_frame_size > 0:
+                frame_image, _ = cvtlib.image.resize(
+                    image, self.max_frame_size
+                )
+            frame = Frame(image=frame_image)
+
+        for i in range(n_boxes):
+            bodies.append(Body(
+                image=padded_body_images[i],
+                box=padded_boxes[i],
+                frame=frame,
+                detect_score=detect_scores[i],
+                timestamp=timestamp,
+                offset=offsets[i]
+            ))
+
+        if self.body_encoder is not None:
+            embeddings = self.body_encoder.encode(body_images)
+            for i, body in enumerate(bodies):
+                body.embeddings = embeddings[i]
+
+        return bodies, embeddings
 
 
 class FrameAnalyzer:

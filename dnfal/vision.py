@@ -80,7 +80,10 @@ class FacesVision:
     @property
     def face_matcher(self):
         if self._face_matcher is None:
-            self._face_matcher = FaceMatcher()
+            se = self.settings
+            self._face_matcher = FaceMatcher(
+                similarity_thresh=se.similarity_thresh
+            )
             logger.info('Face matcher created.')
         return self._face_matcher
 

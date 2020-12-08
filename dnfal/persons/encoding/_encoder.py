@@ -15,7 +15,7 @@ INPUT_WIDTH = 256
 INPUT_HEIGHT = 128
 
 
-class PersonEncoder:
+class BodyEncoder:
     """Full-body person encoder for re-identification.
 
     Parameters

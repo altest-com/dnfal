@@ -1,1 +1,1 @@
-from ._detector import PersonDetector
+from ._detector import BodyDetector

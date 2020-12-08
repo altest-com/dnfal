@@ -1,2 +1,2 @@
-from .detection import PersonDetector
-from .encoding import PersonEncoder
+from .detection import BodyDetector
+from .encoding import BodyEncoder

@@ -8,7 +8,7 @@ from cvtlib.drawing import Drawer
 import numpy as np
 
 from dnfal.loggers import logger, config_logger
-from dnfal.persons import PersonEncoder
+from dnfal.persons import BodyEncoder
 from utils import list_images, DEMOS_DIR, MODELS_DIR
 
 SHOW_WIDTH = 32
@@ -29,7 +29,7 @@ def run(image_path: str, output_path: str, weights_path: str):
 
     config_logger(level='DEBUG', to_console=True)
 
-    person_encoder = PersonEncoder(weights_path=weights_path)
+    person_encoder = BodyEncoder(weights_path=weights_path)
     images_paths = list_images(image_path)
 
     logger.info('Starting analysis...')

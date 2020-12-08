@@ -10,7 +10,7 @@ SCALE = np.float32([0.01712475, 0.017507, 0.01742919])
 OFFSET = np.float32([2.11790393, 2.03571429, 1.80444444])
 
 
-class PersonDetector:
+class BodyDetector:
     """Full-body person detector.
 
     Parameters
